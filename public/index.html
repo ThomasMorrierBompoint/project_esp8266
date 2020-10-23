@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css"
+    />
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui"
+    />
+    <style>
+      body {
+        background: rgb(30, 30, 30);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <v-app>
+        <v-main>
+          <v-snackbar v-model="snackbar" :timeout="timeout" top>
+            <div class="text-center">{{ text }}</div>
+          </v-snackbar>
+          <v-card dark style="border-radius: 0; min-height: 100vh">
+            <v-form ref="form" @submit.prevent="onSubmit">
+              <v-app-bar>
+                <v-btn
+                  @click="onSendAction('reset')"
+                  class="ma-3 pa-2"
+                  color="error"
+                  :disabled="isLoading"
+                >
+                  RESET
+                </v-btn>
+                <v-toolbar-title>WEB GUI ESP8266</v-toolbar-title>
+                <v-spacer></v-spacer>
+                <v-switch
+                  class="ma-3 pa-2"
+                  v-model="showInvisibles"
+                  label="Show invisibles"
+                  @change="onSetInvisible"
+                  hide-details
+                  dense
+                ></v-switch>
+                <v-select
+                  class="ma-3 pa-2"
+                  v-model="fontSize"
+                  label="Font size"
+                  :items="fontSizes"
+                  @change="onSetFontSize"
+                  hide-details
+                  dense
+                  style="max-width: 90px"
+                ></v-select>
+                <v-autocomplete
+                  class="ma-3 pa-2"
+                  v-model="theme"
+                  label="Theme"
+                  :items="themes"
+                  @change="onSetTheme"
+                  outlined
+                  hide-details
+                  dense
+                  style="max-width: 225px; min-width: 175px"
+                ></v-autocomplete>
+                <v-btn
+                  @click="onSendAction('debug')"
+                  class="ma-3 pa-2"
+                  color="secondary"
+                  :disabled="isLoading"
+                >
+                  DEBUG
+                </v-btn>
+                <v-btn type="submit" class="ma-3 pa-2" color="primary" :disabled="isLoading">
+                  SEND
+                </v-btn>
+              </v-app-bar>
+              <v-progress-linear v-if="isLoading" indeterminate color="orange"></v-progress-linear>
+              <div
+                id="editor"
+                style="margin: auto; margin-top: 10px; width: 100%; height: 80vh"
+              ></div>
+            </v-form>
+          </v-card>
+        </v-main>
+      </v-app>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.20.0/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+    <script>
+      new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        data() {
+          return {
+            isLoading: false,
+            snackbar: false,
+            timeout: 3500,
+            text: '',
+            editor: null,
+            showInvisibles: false,
+            fontSize: 16,
+            fontSizes: [12, 16, 20, 24, 28, 32],
+            theme: 'monokai',
+            themes: [
+              'ambiance',
+              'chaos',
+              'chrome',
+              'clouds',
+              'clouds_midnight',
+              'cobalt',
+              'crimson_editor',
+              'dawn',
+              'dracula',
+              'dreamweaver',
+              'eclipse',
+              'github',
+              'gob',
+              'gruvbox',
+              'idle_fingers',
+              'iplastic',
+              'katzenmilch',
+              'kr_theme',
+              'kuroir',
+              'merbivore',
+              'merbivore_soft',
+              'mono_industrial',
+              'monokai',
+              'nord_dark',
+              'pastel_on_dark',
+              'solarized_dark',
+              'solarized_light',
+              'sqlserver',
+              'terminal',
+              'textmate',
+              'tomorrow',
+              'tomorrow_night',
+              'tomorrow_night_blue',
+              'tomorrow_night_bright',
+              'tomorrow_night_eighties',
+              'twilight',
+              'vibrant_ink',
+              'xcode',
+            ],
+          };
+        },
+        mounted() {
+          this.$vuetify.theme.themes.dark = true;
+          this.editor = ace.edit('editor');
+          this.editor.session.setMode('ace/mode/javascript');
+          this.editor.setOptions({
+            mode: 'ace/mode/python',
+            cursorStyle: 'ace',
+            displayIndentGuides: true,
+            scrollPastEnd: true,
+            newLineMode: 'unix',
+            tabSize: 4,
+            fontSize: 20,
+          });
+          this.onSetTheme();
+          const code = localStorage.getItem('server-esp8266-code');
+          this.editor.setValue(
+            code ||
+              '#!/usr/bin/python3\n\nfrom machine import Pin\nimport time\nled = Pin(2, Pin.OUT)\nled.off()\ntime.sleep(3)\nled.on()'
+          );
+        },
+        methods: {
+          setSnackbar(text) {
+            this.text = text;
+            this.timeout = text === 'ERROR' ? 8000 : 3500;
+            this.snackbar = true;
+            this.isLoading = text === 'PROCESSING...';
+          },
+          onSetInvisible() {
+            this.editor.setOption('showInvisibles', this.showInvisibles);
+          },
+          onSetFontSize() {
+            this.editor.setOption('fontSize', this.fontSize);
+          },
+          onSetTheme() {
+            this.editor.setTheme(`ace/theme/${this.theme}`);
+          },
+          onSendAction(action) {
+            this.setSnackbar('PROCESSING...');
+            axios({
+              method: 'GET',
+              url: `${location.origin}/${action}`,
+            })
+              .then((response) => this.setSnackbar(response.data.code))
+              .catch(() => this.setSnackbar('ERROR'));
+          },
+          onSubmit() {
+            let data = {
+              code: this.editor.getValue(),
+            };
+            localStorage.setItem('server-esp8266-code', this.editor.getValue());
+            this.setSnackbar('PROCESSING...');
+            axios({
+              method: 'POST',
+              url: `${location.origin}/upload-file-and-run`,
+              data,
+            })
+              .then((response) => this.setSnackbar(response.data.code))
+              .catch(() => this.setSnackbar('ERROR'));
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

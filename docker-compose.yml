@@ -1,0 +1,16 @@
+version: '3.5'
+
+services:
+  esp8266:
+    build: .
+    container_name: server-esp8266
+    restart: always
+    ports:
+      - 8000:8000
+    environment:
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+    volumes:
+      - .:/server-esp8266
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    privileged: true
